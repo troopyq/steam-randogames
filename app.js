@@ -3,6 +3,8 @@ const config = require('config');
 const path = require('path');
 const mongoose = require('mongoose');
 const { default: axios } = require('axios');
+// const static = require('node-static');
+// var file = new static.Server('./client/build');
 
 const app = express();
 
@@ -11,8 +13,19 @@ app.use(express.json({ extended: true }));
 const PORT = config.get('port') || 5000;
 
 const gameListLocal = require('./game_list.json');
-const { path } = require('express/lib/application');
+
 const gamesList = gameListLocal.applist.apps;
+
+app.use(express.static(path.join(__dirname, 'client/build')));
+app.get('*', (req, res) => {
+	res.sendFile(path.join(__dirname + '/client/build/index.html'));
+});
+
+app.get('/log', (req, res) => {
+	const dir = __dirname + 'client' + 'build' + 'index.html';
+
+	res.status(201).json({ dir: dir });
+});
 
 app.get('/game', async (req, res) => {
 	try {
@@ -67,11 +80,15 @@ function random(min, max) {
 
 // start();
 
-if (process.env.NODE_ENV === 'pproduction') {
-	app.use('/', express.static(path.join(__dirname, 'client', 'build')));
-	app.get('*', (req, res) => {
-		res.sendFile(path.resolve(__dirname, 'client', 'build', 'index.html'));
-	});
+if (process.env.NODE_ENV === 'production') {
+	// 	app.use('/', express.static(path.join(__dirname, 'client', 'build')));
+	// 	app.get('*', (req, res) => {
+	// 		res.sendFile(path.join(__dirname, 'client', 'build', 'index.html'));
+	// 	});
+	// 	app.use('/', file.serve(request, response));
+	// 	app.get('*', (req, res) => {
+	// 	    fileServer.serveFile('/index.html', 200, {}, request, response);
+	// 	});
 }
 
 app.listen(PORT, () => console.log(`App started on port ${PORT}...`));
