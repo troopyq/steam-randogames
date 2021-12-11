@@ -1,5 +1,5 @@
 {
-  "port": 80,
+  "port": 8080,
   "key": "988031FE68043A5A7CA663083D2B2B10",
   "mongoUri": "mongodb+srv://nemkov03:nemkov45@cluster0.bf6lr.mongodb.net/randogames?retryWrites=true&w=majority",
   "baseUrl": "https://dinemko.ru"

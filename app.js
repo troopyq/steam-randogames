@@ -1,86 +1,101 @@
 const express = require('express');
 const config = require('config');
 const path = require('path');
-const mongoose = require('mongoose');
 const { default: axios } = require('axios');
-// const static = require('node-static');
-// var file = new static.Server('./client/build');
 
 const app = express();
+const PORT = config.get('port') || 80;
 
 app.use(express.json({ extended: true }));
-
-const PORT = config.get('port') || 5000;
 
 const gameListLocal = require('./game_list.json');
 
 const gamesList = gameListLocal.applist.apps;
 
-app.use(express.static(path.join(__dirname, 'client/build')));
-app.get('*', (req, res) => {
-	res.sendFile(path.join(__dirname + '/client/build/index.html'));
-});
+const gameRouter = express.Router();
 
-app.get('/log', (req, res) => {
-	const dir = __dirname + 'client' + 'build' + 'index.html';
+// app.get('/', function(req, res){
+//   res.send('hello world');
+// });
 
-	res.status(201).json({ dir: dir });
-});
-
-app.get('/game', async (req, res) => {
+gameRouter.get('/', async (req, res) => {
 	try {
-		// const games = await axios
-		// 	.get('https://api.steampowered.com/ISteamApps/GetAppList/v2/')
-		// 	.then((response) => response.data);
+		console.log('---------');
+		let filters;
+		if (req.query.filters) {
+			filters = req.query.filters.split(',').map((el) => parseInt(el));
+		}
+		console.log('params: ', filters || []);
+		const [game, appid, count] = await getGame({ filters });
 
-		const [game, appid] = await getGame();
-
-		res.status(201).json({ ...game, appid: appid });
-		// res.status(201).json(gameList);
+		res.status(201).json({ ...game, appid: appid, count: count ? count : 0 });
 	} catch (e) {
-		// console.log('error', e.message);
-		// console.log('error line', e.lineNumber);
-		// res.status(201).json(e);
+		res.status(500).json(e);
+	}
+});
+gameRouter.get('/:appid', async (req, res) => {
+	try {
+		if (req.params.appid) {
+			const [game, appid] = await getGame({ id: req.params.appid });
+			res.status(201).json({ ...game, appid: appid });
+		} else {
+			const [game, appid] = await getGame();
+			res.status(201).json({ ...game, appid: appid });
+		}
+	} catch (e) {
+		res.status(500).json(e);
 	}
 });
 
-async function start() {
-	try {
-		await mongoose.connect(config.get('mongoUri'), {
-			useNewUrlParser: true,
-			useUnifiedTopology: true,
-			useCreateIndex: true,
-		});
-	} catch (e) {
-		console.log('Server Error', e.message);
+app.use('/game', gameRouter);
+
+async function getGame({ id = null, filters = [], count = 1 }) {
+	console.log('count: ', count);
+	let randGame, appid;
+	if (!id) {
+		randGame = gamesList[random(0, gamesList.length - 1)];
+		appid = randGame.appid;
+	} else {
+		appid = id;
 	}
-}
 
-async function getGame() {
-	const randGame = gamesList[random(0, gamesList.length - 1)];
+	console.log('game: ', randGame || appid);
 
-	console.log(randGame);
+	function timeout(ms) {
+		return new Promise((resolve) => setTimeout(resolve, ms));
+	}
 
-	const appid = randGame.appid;
+	// await timeout(50);
 
 	const { data: game } = await axios.get(
 		`http://store.steampowered.com/api/appdetails?appids=${appid}&l=russian&cc=ru`,
 	);
-
-	if (game[appid].success && (game[appid].data.is_free || game[appid].data.price_overview)) {
-		return [game[appid], appid];
+	// игра в доступе и ее можно скачать
+	if (
+		game &&
+		game[appid].success &&
+		(game[appid].data.is_free || game[appid].data.price_overview)
+	) {
+		const isCat = game[appid].data.categories.filter((cat) => filters.includes(cat.id));
+		console.log('filter: ', isCat);
+		// console.log('categories: ', game[appid].data.categories);
+		if (filters.length && isCat.length) return [game[appid], appid, count];
+		if (filters.length && !isCat.length) return getGame({ count: ++count, filters });
+		return [game[appid], appid, count];
 	}
 
-	return getGame();
+	return getGame({ count: ++count, filters });
 }
 
 function random(min, max) {
-	return Math.floor(min + Math.random() * (max - min));
+	return Math.floor(Math.random() * (max - min) + min);
 }
 
-// start();
-
 if (process.env.NODE_ENV === 'production') {
+	app.use(express.static(path.resolve(__dirname, 'client', 'build')));
+	app.get('*', (req, res) => {
+		res.sendFile(path.join(__dirname, 'client', 'build', 'index.html'));
+	});
 	// 	app.use('/', express.static(path.join(__dirname, 'client', 'build')));
 	// 	app.get('*', (req, res) => {
 	// 		res.sendFile(path.join(__dirname, 'client', 'build', 'index.html'));
