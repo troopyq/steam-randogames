@@ -30,7 +30,6 @@ gameRouter.get('/', async (req, res) => {
 
 		res.status(201).json({ ...game, appid: appid, count: count ? count : 0 });
 	} catch (e) {
-		console.dir(e);
 		res.status(500).json(e);
 	}
 });
