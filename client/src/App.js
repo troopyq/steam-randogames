@@ -59,10 +59,22 @@ function App() {
 		setIsLoad(false);
 	}
 
+	function onKeySearch(e) {
+		if (e.keyCode === 32) {
+			getRandomGame();
+		}
+	}
+
 	useEffect(() => {
 		const id = window.location.hash.split('/').slice(1)[1];
 
+		window.addEventListener('keydown', onKeySearch);
+
 		if (id) getRandomGame(id);
+
+		return () => {
+			window.removeEventListener('keydown', onKeySearch);
+		};
 	}, []);
 
 	return (
