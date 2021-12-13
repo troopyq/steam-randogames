@@ -30,6 +30,7 @@ gameRouter.get('/', async (req, res) => {
 
 		res.status(201).json({ ...game, appid: appid, count: count ? count : 0 });
 	} catch (e) {
+		console.dir(e);
 		res.status(500).json(e);
 	}
 });
@@ -65,7 +66,7 @@ async function getGame({ id = null, filters = [], count = 1 }) {
 		return new Promise((resolve) => setTimeout(resolve, ms));
 	}
 
-	// await timeout(50);
+	await timeout(150);
 
 	const { data: game } = await axios.get(
 		`http://store.steampowered.com/api/appdetails?appids=${appid}&l=russian&cc=ru`,
@@ -74,6 +75,7 @@ async function getGame({ id = null, filters = [], count = 1 }) {
 	if (
 		game &&
 		game[appid].success &&
+		game[appid].data.categories &&
 		(game[appid].data.is_free || game[appid].data.price_overview)
 	) {
 		const isCat = game[appid].data.categories.filter((cat) => filters.includes(cat.id));
